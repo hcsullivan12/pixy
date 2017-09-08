@@ -9,6 +9,7 @@
 #include <iostream>
 #include <map>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -17,6 +18,7 @@
 #include "TSpectrum.h"
 #include "ChargeData.h"
 #include "Event.h"
+#include "NoiseFilter.h"
 #include "RunParams.h"
 
 
@@ -41,48 +43,15 @@ namespace pixy_roimux {
         ///
         ChargeHits(
                 const ChargeData &t_chargeData,
-                const RunParams &t_runParams);
-
-        ///
-        /// Set the parameters for the peak finder of ROOT's TSpectrum class.
-        /// See the TSpectrum documentation for details.
-        ///
-        void setSpecParams(
-                const double t_sigma,
-                const std::string t_option,
-                const double t_threshold) {
-            m_specSig = t_sigma;
-            m_specOpt = t_option;
-            m_specThr = t_threshold;
-        }
-
-        ///
-        /// Set the parameters for the constant fraction discrimination.
-        /// discFracPixel and discFracRoi are the discrimination fractions for pixels and ROIs, respectively. Low and high
-        /// thereof are corresponging to the rising and falling pulse edges, respectively. discThr is an absolut threshold
-        /// applied on both pixels and ROIs to discard events with peaks that are too low. discRange is a range in number of
-        /// samples before and after the peak within which the rising and falling edges are detected. If one of the edges
-        /// falls outside this range, the pulse is discarded.
-        ///
-        void setDiscParams(
-                const double t_discFracPixelLow,
-                const double t_discFracPixelHigh,
-                const double t_discFracRoiLow,
-                const double t_discFracRoiHigh,
-                const int t_discThr,
-                const unsigned t_discRange) {
-            m_discFracPixelLow = t_discFracPixelLow;
-            m_discFracPixelHigh = t_discFracPixelHigh;
-            m_discFracRoiLow = t_discFracRoiLow;
-            m_discFracRoiHigh = t_discFracRoiHigh;
-            m_discThr = t_discThr;
-            m_discRange = t_discRange;
+                const RunParams &t_runParams) :
+                m_chargeData(t_chargeData),
+                m_runParams(t_runParams) {
         }
 
         ///
         /// Find hits.
         ///
-        void findHits();
+        void findHits(const bool t_bipolarRoiHits = true);
 
         ///
         /// Get the vector containing all the hits of all events.
@@ -110,11 +79,20 @@ namespace pixy_roimux {
         ///
         void find2dHits(
                 const TH2S &t_histo,
-                const double t_discFracLow,
-                const double t_discFracHigh,
                 std::vector<Hit2d> &t_hits,
-                std::multimap<unsigned, unsigned> &t_hitOrderLow,
-                std::multimap<unsigned, unsigned> &t_hitOrderHigh);
+                std::multimap<unsigned, unsigned> &t_hitOrderLead,
+                std::multimap<unsigned, unsigned> &t_hitOrderTrail,
+                unsigned &t_nMissed,
+                const bool t_bipolar,
+                const double t_discSigmaPosLead,
+                const double t_discSigmaPosPeak,
+                const double t_discAbsPosPeak,
+                const double t_discSigmaPosTrail,
+                const double t_discSigmaNegLead,
+                const double t_discSigmaNegPeak,
+                const double t_discAbsNegPeak,
+                const double t_discSigmaNegTrail
+        );
 
         ///
         /// Private method used internally to find the 3D hits using the 2D hits found in both readout histos by the 2D hit
@@ -146,61 +124,6 @@ namespace pixy_roimux {
         /// viperMap used to convert pixel and ROI channels to actual geometrical coordinates.
         ///
         const RunParams &m_runParams;
-
-        ///
-        /// Instance of ROOT's TSpectrum classe used to find the peaks in the raw data.
-        /// For some reason, this doesn't work without a pointer.
-        ///
-        std::unique_ptr<TSpectrum> m_spectrum;
-
-        ///
-        /// Sigma parameter of the TSpectrum.
-        /// Consult the TSpectrum documentation for details.
-        ///
-        double m_specSig = 10.;
-
-        ///
-        /// Threshold parameter of the TSpectrum.
-        /// Consult the TSpectrum documentation for details.
-        ///
-        double m_specThr = .4;
-
-        ///
-        /// Option parameter of the TSpectrum.
-        /// Consult the TSpectrum documentation for details.
-        ///
-        std::string m_specOpt = "nodraw";
-
-        ///
-        /// Constant fraction for the discrimination of the rising edge of pixel hits.
-        ///
-        double m_discFracPixelLow = .25;
-
-        ///
-        /// Constant fraction for the discrimination of the falling edge of pixel hits.
-        ///
-        double m_discFracPixelHigh = .25;
-
-        ///
-        /// Constant fraction for the discrimination of the rising edge of ROI hits.
-        ///
-        double m_discFracRoiLow = .25;
-
-        ///
-        /// Constant fraction for the discrimination of the falling edge of ROI hits.
-        ///
-        double m_discFracRoiHigh = .25;
-
-        ///
-        /// Absolut threshold used to discard bad peaks.
-        /// This is needed because TSpectrum finds very low peaks in histos containing no hits.
-        ///
-        int m_discThr = 100;
-
-        ///
-        /// Range within which the discriminator looks for the crossing of the constant fraction threshold.
-        ///
-        unsigned m_discRange = 100;
     };
 }
 

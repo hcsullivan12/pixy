@@ -5,96 +5,151 @@
 #include "RunParams.h"
 
 
-pixy_roimux::RunParams::RunParams(const unsigned t_runId) : m_runId(t_runId) {
-    // Run 1 parameters.
-    if (m_runId == 1) {
-        m_nPixels = 36;
-        m_nRois = 28;
-        m_nChans = m_nPixels + m_nRois;
-        m_pixelPitch = 2.86;
-        m_driftLength = 600.;
-        m_sampleTime = .41;
-        m_driftSpeed = 2.1;
-        m_anodeSample = 93;
-        m_adcLsb = .1512;
-        m_preampGain = 25.;
-
-        // Generate DAQ readout channel mapping for run 1.
-        // Be careful, not to confuse the histograms because the DAQ histogram containing all the ROI (induction) channels
-        // is called "Col_x" and the DAQ histogram containing most of the pixel (collection) channels is called "Ind_x".
-        m_daq2readout.resize(m_nChans);
-        m_readout2daq.resize(m_nChans);
-        for (unsigned i = 0; i < 16; ++i) {
-            m_daq2readout.at(2 * i) = i;
-            m_daq2readout.at(2 * i + 1) = i + 16;
-            m_daq2readout.at(2 * i + 32) = i + 48;
-            m_daq2readout.at(2 * i + 33) = i + 32;
-            m_readout2daq.at(i) = 2 * i;
-            m_readout2daq.at(i + 16) = 2 * i + 1;
-            m_readout2daq.at(i + 32) = 2 * i + 33;
-            m_readout2daq.at(i + 48) = 2 * i + 32;
+namespace pixy_roimux {
+    RunParams::RunParams(const std::string t_runParamsFileName) {
+        FILE *runParamsFile = fopen(t_runParamsFileName.c_str(), "r");
+        char readBuffer[65536];
+        rapidjson::FileReadStream jsonStream(runParamsFile, readBuffer, sizeof(readBuffer));
+        m_jsonDoc.ParseStream(jsonStream);
+        fclose(runParamsFile);
+        if (m_jsonDoc.HasParseError() || !m_jsonDoc.IsObject()) {
+            std::cerr << "ERROR: Failed to parse run parameter file " << t_runParamsFileName << '!' << std::endl;
+            exit(1);
         }
 
-        // Generate pixel and ROI coordinates for run 1.
-        // All coordinates are in units of pixel pitch. The pixel coordinates are relative to the upper left pixel (0, 0).
-        // To get the absolute pixel coordinates, the pixel coordinates need to be added to the ROI coordinates which in
-        // in turn are offsets of the upper left pixel (0, 0). See the readout PCB design for details.
-        m_pixelCoor.resize(m_nPixels);
-        for (unsigned i = 0; i < m_nPixels; ++i) {
-            m_pixelCoor.at(i).resize(2);
-            m_pixelCoor.at(i).at(0) = i % 6;
-            m_pixelCoor.at(i).at(1) = - static_cast<int>(i) / 6;
+        m_runId                 = getJsonMember("runId", rapidjson::kNumberType).GetUint();
+        m_nPixels               = getJsonMember("nPixels", rapidjson::kNumberType).GetUint();
+        m_nRois                 = getJsonMember("nRois", rapidjson::kNumberType).GetUint();
+        m_nChans                = m_nPixels + m_nRois;
+        m_pixelPitch            = getJsonMember("pixelPitch", rapidjson::kNumberType).GetDouble();
+        m_driftLength           = getJsonMember("driftLength", rapidjson::kNumberType).GetDouble();
+        m_sampleTime            = getJsonMember("sampleTime", rapidjson::kNumberType).GetDouble();
+        m_driftSpeed            = getJsonMember("driftSpeed", rapidjson::kNumberType).GetDouble();
+        m_anodeSample           = getJsonMember("anodeSample", rapidjson::kNumberType).GetUint();
+        m_adcLsb                = getJsonMember("adcLsb", rapidjson::kNumberType).GetDouble();
+        m_preampGain            = getJsonMember("preampGain", rapidjson::kNumberType).GetDouble();
+        m_nSamples              = getJsonMember("nSamples", rapidjson::kNumberType).GetUint();
+        m_discSigmaPixelLead    = getJsonMember("discSigmaPixelLead", rapidjson::kNumberType).GetDouble();
+        m_discSigmaPixelPeak    = getJsonMember("discSigmaPixelPeak", rapidjson::kNumberType).GetDouble();
+        m_discAbsPixelPeak      = getJsonMember("discAbsPixelPeak", rapidjson::kNumberType).GetDouble();
+        m_discSigmaPixelTrail   = getJsonMember("discSigmaPixelTrail", rapidjson::kNumberType).GetDouble();
+        m_discSigmaRoiPosLead   = getJsonMember("discSigmaRoiPosLead", rapidjson::kNumberType).GetDouble();
+        m_discSigmaRoiPosPeak   = getJsonMember("discSigmaRoiPosPeak", rapidjson::kNumberType).GetDouble();
+        m_discAbsRoiPosPeak     = getJsonMember("discAbsRoiPosPeak", rapidjson::kNumberType).GetDouble();
+        m_discSigmaRoiPosTrail  = getJsonMember("discSigmaRoiPosTrail", rapidjson::kNumberType).GetDouble();
+        m_discSigmaRoiNegLead   = getJsonMember("discSigmaRoiNegLead", rapidjson::kNumberType).GetDouble();
+        m_discSigmaRoiNegPeak   = getJsonMember("discSigmaRoiNegPeak", rapidjson::kNumberType).GetDouble();
+        m_discAbsRoiNegPeak     = getJsonMember("discAbsRoiNegPeak", rapidjson::kNumberType).GetDouble();
+        m_discSigmaRoiNegTrail  = getJsonMember("discSigmaRoiNegTrail", rapidjson::kNumberType).GetDouble();
+        m_pcaScaleFactor        = getJsonMember("pcaScaleFactor", rapidjson::kNumberType).GetDouble();
+        m_pcaMaxIterations      = getJsonMember("pcaMaxIterations", rapidjson::kNumberType).GetUint();
+        m_kalmanRngSeed         = getJsonMember("kalmanRngSeed", rapidjson::kNumberType).GetUint();
+        m_kalmanMaxIterations   = getJsonMember("kalmanMaxIterations", rapidjson::kNumberType).GetUint();
+        m_kalmanUseRef          = getJsonMember("kalmanUseRef", rapidjson::kTrueType).GetBool();
+        m_kalmanDeltaPval       = getJsonMember("kalmanDeltaPval", rapidjson::kNumberType).GetDouble();
+        m_kalmanDeltaWeight     = getJsonMember("kalmanDeltaWeight", rapidjson::kNumberType).GetDouble();
+        m_kalmanPdgCode         = getJsonMember("kalmanPdgCode", rapidjson::kNumberType).GetInt();
+        m_kalmanMomMag          = getJsonMember("kalmanMomMag", rapidjson::kNumberType).GetDouble();
+
+        m_tpcOrigin = std::vector<double>(3);
+        auto jsonArrayItr = getJsonMember("tpcOrigin", rapidjson::kArrayType, 3, rapidjson::kNumberType).Begin();
+        for (auto &&component : m_tpcOrigin) {
+            component = jsonArrayItr->GetDouble();
+            ++jsonArrayItr;
         }
-        m_roiCoor = {{{1, 27},    {1, 21},    {1, 15},
-                            {7, 30},    {7, 24},    {7, 18},    {7, 12},    {10, 6},
-                            {10, 36},   {13, 30},   {13, 24},   {13, 18},   {13, 12},   {16, 6},
-                            {16, 36},   {19, 30},   {19, 24},   {19, 18},   {19, 12},   {22, 6},
-                            {22, 36},   {25, 30},   {25, 24},   {25, 18},   {25, 12},
-                            {31, 27},   {31, 21},   {31, 15}}};
+        m_daq2readout = std::vector<unsigned>(m_nChans);
+        jsonArrayItr = getJsonMember("daq2readout", rapidjson::kArrayType, m_nChans, rapidjson::kNumberType).Begin();
+        for (auto &&channel : m_daq2readout) {
+            channel = jsonArrayItr->GetUint();
+            ++jsonArrayItr;
+        }
+        m_readout2daq = std::vector<unsigned>(m_nChans);
+        jsonArrayItr = getJsonMember("readout2daq", rapidjson::kArrayType, m_nChans, rapidjson::kNumberType).Begin();
+        for (auto &&channel : m_readout2daq) {
+            channel = jsonArrayItr->GetUint();
+            ++jsonArrayItr;
+        }
+        m_pixelCoor = std::vector<std::vector<int>>(m_nPixels, std::vector<int>(2));
+        jsonArrayItr = getJsonMember("pixelCoorX", rapidjson::kArrayType, m_nPixels, rapidjson::kNumberType).Begin();
+        for (auto &&channel : m_pixelCoor) {
+            channel.at(0) = jsonArrayItr->GetInt();
+            ++jsonArrayItr;
+        }
+        jsonArrayItr = getJsonMember("pixelCoorY", rapidjson::kArrayType, m_nPixels, rapidjson::kNumberType).Begin();
+        for (auto &&channel : m_pixelCoor) {
+            channel.at(1) = jsonArrayItr->GetInt();
+            ++jsonArrayItr;
+        }
+        m_roiCoor = std::vector<std::vector<int>>(m_nRois, std::vector<int>(2));
+        jsonArrayItr = getJsonMember("roiCoorX", rapidjson::kArrayType, m_nRois, rapidjson::kNumberType).Begin();
+        for (auto &&channel : m_roiCoor) {
+            channel.at(0) = jsonArrayItr->GetInt();
+            ++jsonArrayItr;
+        }
+        jsonArrayItr = getJsonMember("roiCoorY", rapidjson::kArrayType, m_nRois, rapidjson::kNumberType).Begin();
+        for (auto &&channel : m_roiCoor) {
+            channel.at(1) = jsonArrayItr->GetInt();
+            ++jsonArrayItr;
+        }
+        m_kalmanPosErr = std::vector<double>(3);
+        jsonArrayItr = getJsonMember("kalmanPosErr", rapidjson::kArrayType, 3, rapidjson::kNumberType).Begin();
+        for (auto &&component : m_kalmanPosErr) {
+            component = jsonArrayItr->GetDouble();
+            ++jsonArrayItr;
+        }
+        m_kalmanMomErr = std::vector<double>(3);
+        jsonArrayItr = getJsonMember("kalmanMomErr", rapidjson::kArrayType, 3, rapidjson::kNumberType).Begin();
+        for (auto &&component : m_kalmanMomErr) {
+            component = jsonArrayItr->GetDouble();
+            ++jsonArrayItr;
+        }
     }
-        // Run 2 parameters.
-    else if (m_runId == 2) {
-        m_nPixels = 36;
-        m_nRois = 28;
-        m_nChans = m_nPixels + m_nRois;
-        m_pixelPitch = 2.86;
-        m_driftLength = 600.;
-        m_sampleTime = .21;
-        m_driftSpeed = 2.1;
-        m_anodeSample = 47;
-        m_adcLsb = .1512;
-        m_preampGain = 25.;
 
-        // Generate DAQ readout channel mapping for run 1.
-        // Be careful, not to confuse the histograms because the DAQ histogram containing all the ROI (induction) channels
-        // is called "Col_x" and the DAQ histogram containing most of the pixel (collection) channels is called "Ind_x".
-        m_daq2readout.resize(m_nChans);
-        m_readout2daq.resize(m_nChans);
-        for (unsigned i = 0; i < m_nChans; ++i) {
-            m_daq2readout.at(i) = i;
-            m_readout2daq.at(i) = i;
-        }
 
-        // Generate pixel and ROI coordinates for run 1.
-        // All coordinates are in units of pixel pitch. The pixel coordinates are relative to the upper left pixel (0, 0).
-        // To get the absolute pixel coordinates, the pixel coordinates need to be added to the ROI coordinates which in
-        // in turn are offsets of the upper left pixel (0, 0). See the readout PCB design for details.
-        m_pixelCoor.resize(m_nPixels);
-        for (unsigned i = 0; i < m_nPixels; ++i) {
-            m_pixelCoor.at(i).resize(2);
-            m_pixelCoor.at(i).at(0) = i % 6;
-            m_pixelCoor.at(i).at(1) = - static_cast<int>(i) / 6;
+    const rapidjson::Value & RunParams::getJsonMember(
+            const std::string t_memberName,
+            const rapidjson::Type t_memberType,
+            const unsigned t_arraySize,
+            const rapidjson::Type t_arrayType)
+    {
+        if (!m_jsonDoc.HasMember(t_memberName.c_str())) {
+            std::cerr << "ERROR: Entry \"" << t_memberName << "\" in run parameter file not found!" << std::endl;
+            exit(1);
         }
-        m_roiCoor = {{{1, 27},    {1, 21},    {1, 15},
-                            {7, 30},    {7, 24},    {7, 18},    {7, 12},    {10, 6},
-                            {10, 36},   {13, 30},   {13, 24},   {13, 18},   {13, 12},   {16, 6},
-                            {16, 36},   {19, 30},   {19, 24},   {19, 18},   {19, 12},   {22, 6},
-                            {22, 36},   {25, 30},   {25, 24},   {25, 18},   {25, 12},
-                            {31, 27},   {31, 21},   {31, 15}}};
-    }
-        // Die if we received an invalid run ID.
-    else {
-        std::cerr << "ERROR: Unknown run ID: " << m_runId << '!' << std::endl;
-        exit(1);
+        rapidjson::Value &member = m_jsonDoc[t_memberName.c_str()];
+        if (((t_memberType == rapidjson::kTrueType) || (t_memberType == rapidjson::kFalseType)) &&
+                !((member.GetType() == rapidjson::kTrueType) || (member.GetType() == rapidjson::kFalseType))) {
+            std::cerr << "ERROR: Entry \"" << t_memberName << "\" in run parameter file has wrong type!"
+                      << std::endl;
+            std::cerr << "Expected " << m_jsonTypes.at(rapidjson::kTrueType)
+                      << " or " << m_jsonTypes.at(rapidjson::kFalseType)
+                      << ", got " << m_jsonTypes.at(member.GetType()) << '.' << std::endl;
+            exit(1);
+        }
+        else if (member.GetType() != t_memberType) {
+            std::cerr << "ERROR: Entry \"" << t_memberName << "\" in run parameter file has wrong type!"
+                      << std::endl;
+            std::cerr << "Expected " << m_jsonTypes.at(t_memberType) << ", got " << m_jsonTypes.at(member.GetType())
+                      << '.' << std::endl;
+            exit(1);
+        }
+        if (member.GetType() == rapidjson::kArrayType) {
+            if (member.Size() != t_arraySize) {
+                std::cerr << "ERROR: Size mismatch for array \"" << t_memberName << "\" in run parameter file!"
+                          << std::endl;
+                std::cerr << "Expected " << t_arraySize << ", got " << member.Size() << '.' << std::endl;
+                exit(1);
+            }
+            for (const auto &value : member.GetArray()) {
+                if (value.GetType() != t_arrayType) {
+                    std::cerr << "ERROR: Type mismatch in array \"" << t_memberName << "\" in run parameter file!"
+                              << std::endl;
+                    std::cerr << "Expected " << m_jsonTypes.at(t_arrayType) << ", got "
+                              << m_jsonTypes.at(value.GetType()) << '.' << std::endl;
+                    exit(1);
+                }
+            }
+        }
+        return member;
     }
 }

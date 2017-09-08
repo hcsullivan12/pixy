@@ -11,82 +11,6 @@
 
 
 namespace pixy_roimux {
-    struct Hit2d;
-    struct Hit3d;
-
-
-///
-/// Event struct.
-/// The high(low) multimaps map the start(end) of the hit pulse to the hit in pixelHits and roiHits respectively. The
-/// pixel2roi(roi2pixel) vectors map each pixel(roi) hit to all its matched roi(pixel) hits, i.e. pixel2roi.at(x) will
-/// return a vector containing the indices of all the hits in roiHits matched to the x-th pixelHit. If an ambiguous
-/// match occured, the vector will contain more than one index and naturally if matching failed, the vector will be
-/// empty.
-///
-    struct Event {
-        ///
-        /// Run ID.
-        ///
-        unsigned runId;
-
-        ///
-        /// Subrun ID.
-        ///
-        unsigned subrunId;
-
-        ///
-        /// Event ID.
-        ///
-        unsigned eventId;
-
-        ///
-        /// Pixel hits stored at viper2dHit structs.
-        ///
-        std::vector<Hit2d> pixelHits;
-
-        ///
-        /// Map from viper2dHit.firstSample to its index in pixelHits.
-        ///
-        std::multimap<unsigned, unsigned> pixelHitOrderLow;
-
-        ///
-        /// Map from viper2dHit.lastSample to its index in pixelHits.
-        ///
-        std::multimap<unsigned, unsigned> pixelHitOrderHigh;
-
-        ///
-        /// ROI hits stored at viper2dHit structs.
-        ///
-        std::vector<Hit2d> roiHits;
-
-        ///
-        /// Map from viper2dHit.firstSample to its index in roiHits.
-        ///
-        std::multimap<unsigned, unsigned> roiHitOrderLow;
-
-        ///
-        /// Map from viper2dHit.lastSample to its index in roiHits.
-        ///
-        std::multimap<unsigned, unsigned> roiHitOrderHigh;
-
-        ///
-        /// Vector of indices of all matched roiHits for each pixelHit entry.
-        ///
-        std::vector<std::vector<unsigned>> pixel2roi;
-
-        ///
-        /// Vector of indices of all matched pixelHits for each roiHit entry.
-        ///
-        std::vector<std::vector<unsigned>> roi2pixel;
-
-        ///
-        /// viper3dHit candidates generated from pixel2roi and pixelHits.
-        /// Has the same dimensions as pixel2roi.
-        ///
-        std::vector<std::vector<Hit3d>> hitCandidates;
-    };
-
-
 ///
 /// 2D hit struct.
 /// Used to store pixel and ROI hits.
@@ -103,9 +27,19 @@ namespace pixy_roimux {
         unsigned firstSample;
 
         ///
-        /// Index in the raw histogram of the peak sample of the pulse.
+        /// Index in the raw histogram of the positive peak sample of the pulse.
         ///
-        unsigned peakSample;
+        unsigned posPeakSample;
+
+        ///
+        /// Index in the raw histogram of the first negative sample of the pulse.
+        ///
+        unsigned zeroCrossSample;
+
+        ///
+        /// Index in the raw histogram of the negative peak sample of the pulse.
+        ///
+        unsigned negPeakSample;
 
         ///
         /// Index in the raw histogram of the last sample of the pulse.
@@ -113,14 +47,24 @@ namespace pixy_roimux {
         unsigned lastSample;
 
         ///
-        /// Pulse width in number of samples (usually lastSample - firstSample + 1).
+        /// Positive ulse width in number of samples.
         ///
-        unsigned pulseWidth;
+        unsigned posPulseWidth;
 
         ///
-        /// ADC value at the peak of the pulse.
+        /// Negative ulse width in number of samples.
         ///
-        int pulseHeight;
+        unsigned negPulseWidth;
+
+        ///
+        /// ADC value at the positive peak of the pulse.
+        ///
+        int posPulseHeight;
+
+        ///
+        /// ADC value at the negative peak of the pulse.
+        ///
+        int negPulseHeight;
 
         ///
         /// Integral of the pulse from firstSample until and including lastSample.
@@ -160,6 +104,95 @@ namespace pixy_roimux {
         /// Charge in C.
         ///
         float charge;
+
+        unsigned pixelHitId;
+
+        unsigned roiHitId;
+    };
+
+
+    struct PrincipalComponents {
+        unsigned numHitsUsed;
+        std::vector<double> eigenValues;
+        std::vector<std::vector<double>> eigenVectors;
+        std::vector<double> avePosition;
+        double aveHitDoca;
+    };
+
+
+    ///
+    /// Event struct.
+    /// The high(low) multimaps map the start(end) of the hit pulse to the hit in pixelHits and roiHits respectively. The
+    /// pixel2roi(roi2pixel) vectors map each pixel(roi) hit to all its matched roi(pixel) hits, i.e. pixel2roi.at(x) will
+    /// return a vector containing the indices of all the hits in roiHits matched to the x-th pixelHit. If an ambiguous
+    /// match occured, the vector will contain more than one index and naturally if matching failed, the vector will be
+    /// empty.
+    ///
+    struct Event {
+        ///
+        /// Run ID.
+        ///
+        unsigned runId;
+
+        ///
+        /// Subrun ID.
+        ///
+        unsigned subrunId;
+
+        ///
+        /// Event ID.
+        ///
+        unsigned eventId;
+
+        ///
+        /// Pixel hits stored at viper2dHit structs.
+        ///
+        std::vector<Hit2d> pixelHits;
+
+        ///
+        /// Map from viper2dHit.firstSample to its index in pixelHits.
+        ///
+        std::multimap<unsigned, unsigned> pixelHitOrderLead;
+
+        ///
+        /// Map from viper2dHit.lastSample to its index in pixelHits.
+        ///
+        std::multimap<unsigned, unsigned> pixelHitOrderTrail;
+
+        ///
+        /// ROI hits stored at viper2dHit structs.
+        ///
+        std::vector<Hit2d> roiHits;
+
+        ///
+        /// Map from viper2dHit.firstSample to its index in roiHits.
+        ///
+        std::multimap<unsigned, unsigned> roiHitOrderLead;
+
+        ///
+        /// Map from viper2dHit.lastSample to its index in roiHits.
+        ///
+        std::multimap<unsigned, unsigned> roiHitOrderTrail;
+
+        ///
+        /// Vector of indices of all matched roiHits for each pixelHit entry.
+        ///
+        std::vector<std::vector<unsigned>> pixel2roi;
+
+        ///
+        /// Vector of indices of all matched pixelHits for each roiHit entry.
+        ///
+        std::vector<std::vector<unsigned>> roi2pixel;
+
+        ///
+        /// viper3dHit candidates generated from pixel2roi and pixelHits.
+        /// Has the same dimensions as pixel2roi.
+        ///
+        std::vector<std::vector<Hit3d>> hitCandidates;
+
+        std::vector<int> pcaIds;
+
+        PrincipalComponents principalComponents;
     };
 }
 

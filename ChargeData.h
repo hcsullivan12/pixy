@@ -37,8 +37,7 @@ namespace pixy_roimux {
         ChargeData(
                 const std::string t_rootFileName,
                 const unsigned t_subrunId,
-                const pixy_roimux::RunParams &t_map,
-                const unsigned t_nSamples = 1000);
+                const pixy_roimux::RunParams &t_runParams);
 
         ///
         /// Constructor reading a subset of events from a ROOT file.
@@ -50,8 +49,7 @@ namespace pixy_roimux {
                 const std::string t_rootFileName,
                 const std::vector<unsigned> &t_eventIds,
                 const unsigned t_subrunId,
-                const pixy_roimux::RunParams &t_map,
-                const unsigned t_nSamples = 1000);
+                const pixy_roimux::RunParams &t_map);
 
         ///
         /// Constructor reading a vector pairs of DAQ histograms.
@@ -62,8 +60,7 @@ namespace pixy_roimux {
                 const std::vector<std::pair<const TH2S *, const TH2S *>> &t_daqHistos,
                 const std::vector<unsigned> &t_eventIds,
                 const unsigned t_subrunId,
-                const pixy_roimux::RunParams &t_map,
-                const unsigned t_nSamples = 1000);
+                const pixy_roimux::RunParams &t_map);
 
         ///
         /// Constructor directly reading a pair of DAQ histograms.
@@ -75,8 +72,7 @@ namespace pixy_roimux {
                 const TH2S *const t_colHisto,
                 const unsigned t_eventId,
                 const unsigned t_subrunId,
-                const pixy_roimux::RunParams &t_map,
-                const unsigned t_nSamples = 1000);
+                const pixy_roimux::RunParams &t_map);
 
         ///
         /// Get the vector containing the readout histograms.
@@ -151,11 +147,6 @@ namespace pixy_roimux {
         /// Event IDs;
         ///
         std::vector<unsigned> m_eventIds;
-
-        ///
-        /// Number of samples of the converted histograms.
-        ///
-        const unsigned m_nSamples;
 
         ///
         /// Map for the conversion from DAQ channels to readout channels.

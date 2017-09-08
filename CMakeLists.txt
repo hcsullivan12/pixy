@@ -4,13 +4,24 @@ project(pixy_roimux)
 set(CMAKE_CXX_STANDARD 11)
 
 list(APPEND CMAKE_MODULE_PATH $ENV{ROOTSYS}/etc/cmake)
-find_package(ROOT REQUIRED Spectrum)
+find_package(ROOT COMPONENTS Geom REQUIRED)
+include_directories(${ROOT_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS})
-include_directories(${ROOT_INCLUDE_DIR})
 
-set(SOURCE_FILES main.cpp ChargeData.cpp ChargeData.h RunParams.cpp RunParams.h Event.cpp Event.h ChargeHits.cpp ChargeHits.h)
+set(Eigen3_DIR /home/damian/software/packages/share/eigen3/cmake)
+find_package(Eigen3 REQUIRED CONFIG)
+include_directories(${EIGEN3_INCLUDE_DIRS})
+
+set(RapidJSON_DIR /home/damian/software/packages/lib/cmake/RapidJSON)
+find_package(RapidJSON REQUIRED CONFIG)
+include_directories(${RapidJSON_INCLUDE_DIRS})
+
+find_library(GENFIT_LIBRARIES NAMES libgenfit2.so PATHS $ENV{GENFIT}/lib)
+include_directories($ENV{GENFIT}/include)
+
+set(SOURCE_FILES main.cpp ChargeData.cpp ChargeData.h RunParams.cpp RunParams.h Event.cpp Event.h ChargeHits.cpp ChargeHits.h NoiseFilter.cpp NoiseFilter.h PrincipalComponentsCluster.cpp PrincipalComponentsCluster.h KalmanFit.cpp KalmanFit.h)
 add_executable(pixy_roimux ${SOURCE_FILES})
 
-target_link_libraries(pixy_roimux ${ROOT_LIBRARIES})
+target_link_libraries(pixy_roimux ${ROOT_LIBRARIES} ${GENFIT_LIBRARIES})
 
 #install(TARGETS pixy_roimux DESTINATION bin)

@@ -3,51 +3,91 @@
 #include <fstream>
 #include <string>
 #include <vector>
-//#include "TApplication.h"
-//#include "TBrowser.h"
-//#include "TCanvas.h"
-//#include "TFile.h"
-//#include "TH2S.h"
+#include "TFile.h"
+#include "TTree.h"
 #include "ChargeData.h"
 #include "ChargeHits.h"
+#include "NoiseFilter.h"
+#include "PrincipalComponentsCluster.h"
 #include "RunParams.h"
+#include "KalmanFit.h"
 
 
 int main(int argc, char** argv) {
     // Start time point for timer.
     auto clkStart = std::chrono::high_resolution_clock::now();
 
-    // TApplication for ROOT graphics.
-    /*TApplication app("VIPER Reconstruction ROOT Application", &argc, argv);
-
-    // Some tests of ROOT graphics...
-    TBrowser browser;
-    TCanvas canvas;*/
-
-    if (argc < 4) {
-        std::cerr << "Usage: " << argv[0] << " runId rootFileName csvBaseFileName" << std::endl;
+    if (argc < 7) {
+        std::cerr << "Usage: " << argv[0] << " runParamsFileName dataFileName rankingFileName geoFileName genfitTreeFileName csvBaseFileName [minRanking] [maxRanking]" << std::endl;
         exit(1);
     }
-    const unsigned runId = static_cast<unsigned>(std::stoul(argv[1]));
-    const std::string rootFileName = std::string(argv[2]);
-    const std::string csvBaseFileName = std::string(argv[3]);
+    const std::string runParamsFileName = std::string(argv[1]);
+    const std::string dataFileName = std::string(argv[2]);
+    const std::string rankingFileName = std::string(argv[3]);
+    const std::string geoFileName = std::string(argv[4]);
+    const std::string genfitTreeFileName = std::string(argv[5]);
+    const std::string csvBaseFileName = std::string(argv[6]);
+    int minRanking = 4;
+    if (argc > 7) {
+        minRanking = std::stoi(argv[7]);
+    }
+    int maxRanking = 4;
+    if (argc > 8) {
+        maxRanking = std::stoi(argv[8]);
+    }
     const unsigned subrunId = 0;
-    const unsigned nSamples = 2000;
+
+
+    TFile rankingFile(rankingFileName.c_str(), "READ");
+    if (!rankingFile.IsOpen()) {
+        std::cerr << "ERROR: Failed to open ranking file " << rankingFileName << '!' << std::endl;
+        exit(1);
+    }
+    TTree* rankingTree = nullptr;
+    rankingFile.GetObject("RankingTime", rankingTree);
+    if (!rankingTree) {
+        std::cerr << "ERROR: Failed to find \"RankingTime\" tree in ranking file " << rankingFileName << '!' << std::endl;
+        exit(1);
+    }
+    int ranking;
+    rankingTree->SetBranchAddress("Ranking", &ranking);
+    std::vector<unsigned> eventIds;
+    for (unsigned event = 0; event < rankingTree->GetEntries(); ++event) {
+        rankingTree->GetEvent(event);
+        if ((ranking >= minRanking) && (ranking <= maxRanking)) {
+            eventIds.push_back(event);
+        }
+    }
+    rankingFile.Close();
 
     // Create the VIPER runParams containing all the needed run parameters.
-    const pixy_roimux::RunParams runParams(runId);
+    const pixy_roimux::RunParams runParams(runParamsFileName);
 
     // Load events directly from ROOT file.
     std::cout << "Extracting chargeData...\n";
-    const pixy_roimux::ChargeData chargeData(rootFileName, subrunId, runParams, nSamples);
+    pixy_roimux::ChargeData chargeData(dataFileName, eventIds, subrunId, runParams);
+
+    // Noise filter
+    std::cout << "Filtering chargeData...\n";
+    pixy_roimux::NoiseFilter noiseFilter;
+    noiseFilter.filterData(chargeData);
 
     // Find the chargeHits.
     std::cout << "Initialising hit finder...\n";
     pixy_roimux::ChargeHits chargeHits(chargeData, runParams);
     // Set up TSpectrum.
-    chargeHits.setSpecParams(5., "nodraw", .2);
     std::cout << "Running hit finder...\n";
     chargeHits.findHits();
+
+    std::cout << "Initialising principle components analysis...\n";
+    pixy_roimux::PrincipalComponentsCluster principalComponentsCluster(runParams);
+    std::cout << "Running principle components analysis...\n";
+    principalComponentsCluster.analyseEvents(chargeHits);
+
+    std::cout << "Initialising Kalman Fitter...\n";
+    pixy_roimux::KalmanFit kalmanFit(runParams, geoFileName, true);
+    std::cout << "Running Kalman Fitter...\n";
+    kalmanFit.fit(chargeHits, genfitTreeFileName);
 
     // Write chargeHits of events in eventIds vector to CSV files so we can plot them with viper3Dplot.py afterwards.
     unsigned nHitCandidates = 0;
@@ -57,23 +97,51 @@ int main(int argc, char** argv) {
     for (const auto& event : chargeHits.getEvents()) {
         std::cout << "Writing event number " << event.eventId << " to file...\n";
         // Compose CSV filename and open file stream.
-        const std::string csvFileName = csvBaseFileName + "_event" + std::to_string(event.eventId) + ".csv";
-        std::ofstream csvFile(csvFileName, std::ofstream::out);
-        csvFile << "X,Y,Z,Q" << std::endl;
+        const std::string csvEventBaseFileName = csvBaseFileName + "_event" + std::to_string(event.eventId);
+        const std::string csvHitsFileName = csvEventBaseFileName + "_hits.csv";
+        std::ofstream csvHitsFile(csvHitsFileName, std::ofstream::out);
+        csvHitsFile << "X,Y,Z,Q,A" << std::endl;
         // viperEvents.hitCandidates is a vector of vectors so we need two loops.
         // Outer loop. Actually loops through pixel chargeHits of current event.
+        auto pcaId = event.pcaIds.cbegin();
         for (const auto& hitCandidates : event.hitCandidates) {
             // Inner loop. Loops through all hit candidates of current pixel hit.
+            int hitId = 0;
             for (const auto& hit : hitCandidates) {
+                int reject = 0;
+                if (*pcaId == - 2) {
+                    reject = 1;
+                }
+                else if (hitId != *pcaId) {
+                    reject = 2;
+                }
                 // Append coordinates and charge to file.
-                csvFile << hit.x << "," << hit.y << "," << hit.z << "," << hit.charge << std::endl;
+                csvHitsFile << hit.x << ',' << hit.y << ',' << hit.z << ',' << hit.charge << ',' << reject << std::endl;
+                ++hitId;
             }
+            ++pcaId;
         }
         // Close CSV file.
-        csvFile.close();
+        csvHitsFile.close();
+        const std::string csvPcaFileName = csvEventBaseFileName + "_pca.csv";
+        std::ofstream csvPcaFile(csvPcaFileName, std::ofstream::out);
+        if (!event.principalComponents.avePosition.empty()) {
+            csvPcaFile << event.principalComponents.avePosition.at(0) << ','
+                       << event.principalComponents.avePosition.at(1) << ','
+                       << event.principalComponents.avePosition.at(2) << std::endl;
+        }
+        else {
+            csvPcaFile << "0,0,0" << std::endl;
+        }
+        for (const auto &eigenVector : event.principalComponents.eigenVectors) {
+            csvPcaFile << eigenVector.at(0) << ','
+                       << eigenVector.at(1) << ','
+                       << eigenVector.at(2) << std::endl;
+        }
+        csvPcaFile.close();
         // Calculate some stats.
         // Loop over all pixel chargeHits using the pixel to ROI hit runParams.
-        for (const auto& candidateRoiHitIds : event.pixel2roi) {
+        for (const auto &candidateRoiHitIds : event.pixel2roi) {
             // Add number of ROI hit candidates for current pixel hit.
             nHitCandidates += candidateRoiHitIds.size();
             // If there's no ROI hit candidates, increment the unmatched counter.
@@ -107,8 +175,7 @@ int main(int argc, char** argv) {
     std::cout << "Elapsed time for " << chargeHits.getEvents().size() << " processed events is: "
               << clkDuration.count() << "ms\n";
 
-    // Keep ROOT graphics open.
-    //app.Run();
+    kalmanFit.openEventDisplay();
 
     return 0;
 }
