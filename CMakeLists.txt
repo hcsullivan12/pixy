@@ -8,11 +8,11 @@ find_package(ROOT COMPONENTS Geom REQUIRED)
 include_directories(${ROOT_INCLUDE_DIRS})
 add_definitions(${ROOT_CXX_FLAGS})
 
-set(Eigen3_DIR /home/damian/software/packages/share/eigen3/cmake)
+set(Eigen3_DIR $ENV{Eigen3_CMAKEDIR})
 find_package(Eigen3 REQUIRED CONFIG)
 include_directories(${EIGEN3_INCLUDE_DIRS})
 
-set(RapidJSON_DIR /home/damian/software/packages/lib/cmake/RapidJSON)
+set(RapidJSON_DIR $ENV{RapidJSON_CMAKEDIR})
 find_package(RapidJSON REQUIRED CONFIG)
 include_directories(${RapidJSON_INCLUDE_DIRS})
 
