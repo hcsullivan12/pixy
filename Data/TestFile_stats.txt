@@ -1,4 +1,0 @@
-Number of events processed: 22
-Average number of hit candidates per event: 228.636
-Average number of ambiguities per event: 54.5
-Average number of unmatched pixel chargeHits per event: 10.6818
