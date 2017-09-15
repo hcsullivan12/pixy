@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.5)
 project(pixy_roimux)
 
 set(CMAKE_CXX_STANDARD 11)
@@ -19,8 +19,11 @@ include_directories(${RapidJSON_INCLUDE_DIRS})
 find_library(GENFIT_LIBRARIES NAMES libgenfit2.so PATHS $ENV{GENFIT}/lib)
 include_directories($ENV{GENFIT}/include)
 
-set(SOURCE_FILES main.cpp ChargeData.cpp ChargeData.h RunParams.cpp RunParams.h Event.cpp Event.h ChargeHits.cpp ChargeHits.h NoiseFilter.cpp NoiseFilter.h PrincipalComponentsCluster.cpp PrincipalComponentsCluster.h KalmanFit.cpp KalmanFit.h)
-add_executable(pixy_roimux ${SOURCE_FILES})
+include_directories(${PROJECT_SOURCE_DIR}/include)
+
+file(GLOB_RECURSE sources ${PROJECT_SOURCE_DIR}/src/*.cpp)
+file(GLOB_RECURSE headers ${PROJECT_SOURCE_DIR}/include/*.h)
+add_executable(pixy_roimux main.cpp ${sources} ${headers})
 
 target_link_libraries(pixy_roimux ${ROOT_LIBRARIES} ${GENFIT_LIBRARIES})
 
