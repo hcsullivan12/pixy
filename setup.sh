@@ -1,5 +1,5 @@
-#softwarePath="/home/damian/software"
-rootPath="/home/hunter/Software/build"
+projectPath="/home/hunter/projects/pixy"
+rootPath="/home/hunter/Software/root-6.06.08"
 genfitPath="/home/hunter/projects/GenFit"
 packagesPath="/home/hunter/Software/packages"
 eigen3IncludePath="${packagesPath}/include/eigen3"
