@@ -1,3 +1,0 @@
-/home/hunter/projects/pixy/build/CMakeFiles/edit_cache.dir
-/home/hunter/projects/pixy/build/CMakeFiles/rebuild_cache.dir
-/home/hunter/projects/pixy/build/CMakeFiles/pixy_roimux.dir
