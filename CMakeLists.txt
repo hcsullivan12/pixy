@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(pixy_roimux)
+project(pixy)
 
 set(CMAKE_CXX_STANDARD 11)
 
@@ -23,8 +23,8 @@ include_directories(${PROJECT_SOURCE_DIR}/include)
 
 file(GLOB_RECURSE sources ${PROJECT_SOURCE_DIR}/src/*.cpp)
 file(GLOB_RECURSE headers ${PROJECT_SOURCE_DIR}/include/*.h)
-add_executable(pixy_roimux main.cpp ${sources} ${headers})
+add_executable(pixy main.cpp ${sources} ${headers})
 
-target_link_libraries(pixy_roimux ${ROOT_LIBRARIES} ${GENFIT_LIBRARIES})
+target_link_libraries(pixy ${ROOT_LIBRARIES} ${GENFIT_LIBRARIES})
 
-#install(TARGETS pixy_roimux DESTINATION bin)
+
