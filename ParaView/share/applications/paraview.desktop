@@ -1,0 +1,7 @@
+[Desktop Entry]
+Version=5.2.0
+Type=Application
+Name=ParaView
+Comment=Parallel visualization application
+TryExec=paraview
+Icon=paraview

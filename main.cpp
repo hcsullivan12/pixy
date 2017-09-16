@@ -14,9 +14,11 @@
 
 
 int main(int argc, char** argv) {
-    // Start time point for timer.
+    
+    ///Start time point for timer.
     auto clkStart = std::chrono::high_resolution_clock::now();
-
+    
+    ///Handle Runtime Arguments
     if (argc < 7) {
         std::cerr << "Usage: " << argv[0] << " runParamsFileName dataFileName rankingFileName geoFileName genfitTreeFileName csvBaseFileName [minRanking] [maxRanking]" << std::endl;
         exit(1);
@@ -37,7 +39,7 @@ int main(int argc, char** argv) {
     }
     const unsigned subrunId = 0;
 
-
+    ///Get Ranking TTree from ROOT input file
     TFile rankingFile(rankingFileName.c_str(), "READ");
     if (!rankingFile.IsOpen()) {
         std::cerr << "ERROR: Failed to open ranking file " << rankingFileName << '!' << std::endl;
@@ -49,6 +51,9 @@ int main(int argc, char** argv) {
         std::cerr << "ERROR: Failed to find \"RankingTime\" tree in ranking file " << rankingFileName << '!' << std::endl;
         exit(1);
     }
+    
+    ///Set ranking branch address to store variable 'ranking'
+    ///Ranking has to meet a standard to be considered, if yes, push into eventIds vector
     int ranking;
     rankingTree->SetBranchAddress("Ranking", &ranking);
     std::vector<unsigned> eventIds;
@@ -60,7 +65,7 @@ int main(int argc, char** argv) {
     }
     rankingFile.Close();
 
-    // Create the VIPER runParams containing all the needed run parameters.
+    ///Create the pixy runParams containing all the needed run parameters.
     const pixy_roimux::RunParams runParams(runParamsFileName);
 
     // Load events directly from ROOT file.

@@ -21,3 +21,11 @@ Pixy takes a few inputs at runtime.
 ```
 ./pixy [path/to/RunParameters.json] [path/to/input/data.root] [path/to/ranking.root] [path/to/ACDemoGeom.root] [output/Tree.root] [output.csv]
 ```
+## Running Paraview
+
+Paraview shows that space points in 3D.
+
+```
+cd Paraview/bin	
+./pvpython ../../{display.py} ../../{TestFilehits.csv} ../../{TestFilepca.csv
+```

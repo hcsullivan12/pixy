@@ -6,8 +6,12 @@
 
 
 namespace pixy_roimux {
+    
+    ///RunParams Constructor, runParamsFile as input
     RunParams::RunParams(const std::string t_runParamsFileName) {
         FILE *runParamsFile = fopen(t_runParamsFileName.c_str(), "r");
+        
+        ///Use to rapidjson to read Parameter file
         char readBuffer[65536];
         rapidjson::FileReadStream jsonStream(runParamsFile, readBuffer, sizeof(readBuffer));
         m_jsonDoc.ParseStream(jsonStream);
@@ -16,7 +20,9 @@ namespace pixy_roimux {
             std::cerr << "ERROR: Failed to parse run parameter file " << t_runParamsFileName << '!' << std::endl;
             exit(1);
         }
-
+        
+        /*********Set the runParams variables*******/
+        //Geometry, detector, electronics information
         m_runId                 = getJsonMember("runId", rapidjson::kNumberType).GetUint();
         m_nPixels               = getJsonMember("nPixels", rapidjson::kNumberType).GetUint();
         m_nRois                 = getJsonMember("nRois", rapidjson::kNumberType).GetUint();
@@ -28,6 +34,15 @@ namespace pixy_roimux {
         m_anodeSample           = getJsonMember("anodeSample", rapidjson::kNumberType).GetUint();
         m_adcLsb                = getJsonMember("adcLsb", rapidjson::kNumberType).GetDouble();
         m_preampGain            = getJsonMember("preampGain", rapidjson::kNumberType).GetDouble();
+        
+        m_tpcOrigin = std::vector<double>(3);
+        auto jsonArrayItr = getJsonMember("tpcOrigin", rapidjson::kArrayType, 3, rapidjson::kNumberType).Begin();
+        for (auto &&component : m_tpcOrigin) {
+            component = jsonArrayItr->GetDouble();
+            ++jsonArrayItr;
+        }
+        
+        //Data anaylsis information
         m_nSamples              = getJsonMember("nSamples", rapidjson::kNumberType).GetUint();
         m_discSigmaPixelLead    = getJsonMember("discSigmaPixelLead", rapidjson::kNumberType).GetDouble();
         m_discSigmaPixelPeak    = getJsonMember("discSigmaPixelPeak", rapidjson::kNumberType).GetDouble();
@@ -50,25 +65,37 @@ namespace pixy_roimux {
         m_kalmanDeltaWeight     = getJsonMember("kalmanDeltaWeight", rapidjson::kNumberType).GetDouble();
         m_kalmanPdgCode         = getJsonMember("kalmanPdgCode", rapidjson::kNumberType).GetInt();
         m_kalmanMomMag          = getJsonMember("kalmanMomMag", rapidjson::kNumberType).GetDouble();
-
-        m_tpcOrigin = std::vector<double>(3);
-        auto jsonArrayItr = getJsonMember("tpcOrigin", rapidjson::kArrayType, 3, rapidjson::kNumberType).Begin();
-        for (auto &&component : m_tpcOrigin) {
+        
+        m_kalmanPosErr = std::vector<double>(3);
+        jsonArrayItr = getJsonMember("kalmanPosErr", rapidjson::kArrayType, 3, rapidjson::kNumberType).Begin();
+        for (auto &&component : m_kalmanPosErr) {
             component = jsonArrayItr->GetDouble();
             ++jsonArrayItr;
         }
+        
+        m_kalmanMomErr = std::vector<double>(3);
+        jsonArrayItr = getJsonMember("kalmanMomErr", rapidjson::kArrayType, 3, rapidjson::kNumberType).Begin();
+        for (auto &&component : m_kalmanMomErr) {
+            component = jsonArrayItr->GetDouble();
+            ++jsonArrayItr;
+        }
+         
+        //Mapping from DAQ to Readout and vice versa
         m_daq2readout = std::vector<unsigned>(m_nChans);
         jsonArrayItr = getJsonMember("daq2readout", rapidjson::kArrayType, m_nChans, rapidjson::kNumberType).Begin();
         for (auto &&channel : m_daq2readout) {
             channel = jsonArrayItr->GetUint();
             ++jsonArrayItr;
         }
+        
         m_readout2daq = std::vector<unsigned>(m_nChans);
         jsonArrayItr = getJsonMember("readout2daq", rapidjson::kArrayType, m_nChans, rapidjson::kNumberType).Begin();
         for (auto &&channel : m_readout2daq) {
             channel = jsonArrayItr->GetUint();
             ++jsonArrayItr;
         }
+        
+        //Pixel Coordinates (X, Y)
         m_pixelCoor = std::vector<std::vector<int>>(m_nPixels, std::vector<int>(2));
         jsonArrayItr = getJsonMember("pixelCoorX", rapidjson::kArrayType, m_nPixels, rapidjson::kNumberType).Begin();
         for (auto &&channel : m_pixelCoor) {
@@ -80,6 +107,8 @@ namespace pixy_roimux {
             channel.at(1) = jsonArrayItr->GetInt();
             ++jsonArrayItr;
         }
+        
+        //ROI Coordinates (X,Y)
         m_roiCoor = std::vector<std::vector<int>>(m_nRois, std::vector<int>(2));
         jsonArrayItr = getJsonMember("roiCoorX", rapidjson::kArrayType, m_nRois, rapidjson::kNumberType).Begin();
         for (auto &&channel : m_roiCoor) {
@@ -89,18 +118,6 @@ namespace pixy_roimux {
         jsonArrayItr = getJsonMember("roiCoorY", rapidjson::kArrayType, m_nRois, rapidjson::kNumberType).Begin();
         for (auto &&channel : m_roiCoor) {
             channel.at(1) = jsonArrayItr->GetInt();
-            ++jsonArrayItr;
-        }
-        m_kalmanPosErr = std::vector<double>(3);
-        jsonArrayItr = getJsonMember("kalmanPosErr", rapidjson::kArrayType, 3, rapidjson::kNumberType).Begin();
-        for (auto &&component : m_kalmanPosErr) {
-            component = jsonArrayItr->GetDouble();
-            ++jsonArrayItr;
-        }
-        m_kalmanMomErr = std::vector<double>(3);
-        jsonArrayItr = getJsonMember("kalmanMomErr", rapidjson::kArrayType, 3, rapidjson::kNumberType).Begin();
-        for (auto &&component : m_kalmanMomErr) {
-            component = jsonArrayItr->GetDouble();
             ++jsonArrayItr;
         }
     }
