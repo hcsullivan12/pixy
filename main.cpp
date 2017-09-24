@@ -71,15 +71,63 @@ int main(int argc, char** argv) {
     for (int i = 0; i < eventIds.size(); i++) {
     	std::cout << "Accepted Event #" << eventIds.at(i) << std::endl;
     }
-	
+
     // Load events directly from ROOT file.
     std::cout << "Extracting chargeData...\n";
     pixy_roimux::ChargeData chargeData(dataFileName, eventIds, subrunId, runParams);
+
+    // Write unfiltered histograms to a root file
+    std::cout << "Writing readout histos to UnfilteredHistograms\n";
+    TFile UnfilteredData("../data/UnfilteredHistograms.root", "RECREATE");
+    auto eventId = chargeData.getEventIds().cbegin();
+    for (auto &&histos : chargeData.getReadoutHistos()) {
+	///Pixels
+	for (int channel = 0; channel < histos.first.GetNbinsY(); channel++) {
+		std::string channelName;
+		channelName = "Event" + std::to_string(*eventId) + "_PixelChannel" + std::to_string(channel);
+		auto channelHisto = histos.first.ProjectionX(channelName.c_str(), (channel + 1), (channel + 1));
+		channelHisto->Write();
+	}
+        for (int channel = 0; channel < histos.second.GetNbinsY(); channel++) {
+                std::string channelName;
+                channelName = "Event" + std::to_string(*eventId) + "_ROIChannel" + std::to_string(channel);
+                auto channelHisto = histos.second.ProjectionX(channelName.c_str(), (channel + 1), (channel + 1));
+                channelHisto->Write();
+        }
+
+	eventId++;
+    
+    }
+    UnfilteredData.Close();
 
     // Noise filter
     std::cout << "Filtering chargeData...\n";
     pixy_roimux::NoiseFilter noiseFilter;
     noiseFilter.filterData(chargeData);
+
+    // Write filtered histograms to a root file
+    std::cout << "Writing readout histos to FilteredHistograms\n";
+    TFile FilteredData("../data/FilteredHistograms.root", "RECREATE");
+    eventId = chargeData.getEventIds().cbegin();
+    for (auto &&histos : chargeData.getReadoutHistos()) {
+        ///Pixels
+        for (int channel = 0; channel < histos.first.GetNbinsY(); channel++) {
+                std::string channelName;
+                channelName = "Event" + std::to_string(*eventId) + "_PixelChannel" + std::to_string(channel);
+                auto channelHisto = histos.first.ProjectionX(channelName.c_str(), (channel + 1), (channel + 1));
+                channelHisto->Write();
+        }
+        for (int channel = 0; channel < histos.second.GetNbinsY(); channel++) {
+                std::string channelName;
+                channelName = "Event" + std::to_string(*eventId) + "_ROIChannel" + std::to_string(channel);
+                auto channelHisto = histos.second.ProjectionX(channelName.c_str(), (channel + 1), (channel + 1));
+                channelHisto->Write();
+        }
+
+        eventId++;
+    
+    }
+    FilteredData.Close();
 
     // Find the chargeHits.
     std::cout << "Initialising hit finder...\n";
