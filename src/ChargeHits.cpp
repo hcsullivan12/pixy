@@ -44,12 +44,12 @@ namespace pixy_roimux {
             //double thrNegLead       = noiseParams.first - t_discSigmaNegLead * noiseParams.second;
             double thrNegPeak       = noiseParams.first - std::max(t_discSigmaNegPeak * noiseParams.second, t_discAbsNegPeak);
             double thrNegTrail      = noiseParams.first - t_discSigmaNegTrail * noiseParams.second;
-           // std::cout << "noiseBaseline " << noiseBaseline << std::endl;
-           // std::cout << "thrPosLead " << thrPosLead << std::endl;
-           // std::cout << "thrPosPeak " << thrPosPeak << std::endl;
-           // std::cout << "thrPosTrail " << thrPosTrail << std::endl;
-           // std::cout << "thrNegPeak " << thrNegPeak << std::endl;
-           // std::cout << "thrNegTrail " << thrNegTrail << std::endl;
+          // std::cout << "noiseBaseline " << noiseBaseline << std::endl;
+            //std::cout << "thrPosLead " << thrPosLead << std::endl;
+            //std::cout << "thrPosPeak " << thrPosPeak << std::endl;
+            //std::cout << "thrPosTrail " << thrPosTrail << std::endl;
+            //std::cout << "thrNegPeak " << thrNegPeak << std::endl;
+            //std::cout << "thrNegTrail " << thrNegTrail << std::endl;
             unsigned posPeakSample = static_cast<unsigned>(channelHisto->GetMaximumBin()) - 1;
             int posPeakValue = static_cast<int>(channelHisto->GetBinContent(posPeakSample + 1));
             while (posPeakValue >= thrPosPeak) {
@@ -284,6 +284,10 @@ namespace pixy_roimux {
         auto eventData = m_chargeData.getReadoutHistos().cbegin();
         // Events vector iterator. We'll store the events we built from the raw data in there.
         auto event = m_events.begin();
+	//Vector for ambiguities
+	std::vector<unsigned> ambiguities;
+	//Vector for unmatched
+	std::vector<unsigned> unmatched;
         // Loop over all events using the event IDs vector.
         for (const auto &eventId : m_chargeData.getEventIds()) {
             std::cout << "Processing event number " << eventId << ":\n";
@@ -352,7 +356,9 @@ namespace pixy_roimux {
             }
             std::cout << "Found " << nHitCandidates << " 3D hit candidates.\n";
             std::cout << "Found " << nAmbiguities << " ambiguities.\n";
+	    ambiguities.push_back(nAmbiguities);
             std::cout << "Failed to match " << nUnmatchedPixelHits << " pixel hits.\n";
+	    unmatched.push_back(nUnmatchedPixelHits);
 
             // Store run, subrun and event ID to the event struct.
             event->runId = m_runParams.getRunId();
@@ -363,5 +369,32 @@ namespace pixy_roimux {
             ++eventData;
             ++event;
         }
+
+	int maxAmbiguity = ambiguities.at(0);
+	for(int i = 0; i < ambiguities.size(); i++) {
+		if (ambiguities.at(i) > maxAmbiguity) {
+			maxAmbiguity = ambiguities.at(i);
+		}
+	}
+	TH1S Ambiguities("Ambiguities", "Ambiguities", ambiguities.size(), 0, ambiguities.size());
+	for(int i = 0; i < ambiguities.size(); i++) {
+		Ambiguities.SetBinContent(i + 1, ambiguities.at(i));
+	}
+
+	int maxUnmatched = unmatched.at(0);
+	for(int i = 0; i < unmatched.size(); i++) {
+		if (unmatched.at(i) > maxUnmatched) {
+			maxUnmatched = unmatched.at(i);
+		}
+	}
+	TH1S Unmatched("Unmatched", "Unmatched", unmatched.size(), 0, maxUnmatched);
+	for(int i = 0; i < unmatched.size(); i++) {
+		Unmatched.SetBinContent(i + 1, unmatched.at(i));
+	}
+	TFile Results("../data/Results.root", "RECREATE");
+	Ambiguities.Write();
+	Unmatched.Write();
+	Results.Close();
+	
     }
 }
