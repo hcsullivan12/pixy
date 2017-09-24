@@ -120,6 +120,7 @@ namespace pixy_roimux {
             channel.at(1) = jsonArrayItr->GetInt();
             ++jsonArrayItr;
         }
+	std::cout << "m_discRange is set = " << getDiscRange() << std::endl; 
     }
 
 
@@ -127,13 +128,17 @@ namespace pixy_roimux {
             const std::string t_memberName,
             const rapidjson::Type t_memberType,
             const unsigned t_arraySize,
-            const rapidjson::Type t_arrayType)
-    {
+            const rapidjson::Type t_arrayType) {
+
+        ///Check to see if the document has memberName
         if (!m_jsonDoc.HasMember(t_memberName.c_str())) {
             std::cerr << "ERROR: Entry \"" << t_memberName << "\" in run parameter file not found!" << std::endl;
             exit(1);
         }
+        
+        ///Get the value specified for memberName
         rapidjson::Value &member = m_jsonDoc[t_memberName.c_str()];
+        
         if (((t_memberType == rapidjson::kTrueType) || (t_memberType == rapidjson::kFalseType)) &&
                 !((member.GetType() == rapidjson::kTrueType) || (member.GetType() == rapidjson::kFalseType))) {
             std::cerr << "ERROR: Entry \"" << t_memberName << "\" in run parameter file has wrong type!"

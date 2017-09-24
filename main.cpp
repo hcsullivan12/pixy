@@ -67,7 +67,11 @@ int main(int argc, char** argv) {
 
     ///Create the pixy runParams containing all the needed run parameters.
     const pixy_roimux::RunParams runParams(runParamsFileName);
-
+	
+    for (int i = 0; i < eventIds.size(); i++) {
+    	std::cout << "Accepted Event #" << eventIds.at(i) << std::endl;
+    }
+	
     // Load events directly from ROOT file.
     std::cout << "Extracting chargeData...\n";
     pixy_roimux::ChargeData chargeData(dataFileName, eventIds, subrunId, runParams);

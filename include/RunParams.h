@@ -357,7 +357,7 @@ namespace pixy_roimux {
 
     private:
 
-        const rapidjson::Value & getJsonMember(
+        const rapidjson::Value& getJsonMember(
                 const std::string t_memberName,
                 const rapidjson::Type t_memberType,
                 const unsigned t_arraySize = 0,

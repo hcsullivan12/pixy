@@ -60,7 +60,11 @@ namespace pixy_roimux {
         // Open ROOT file read-only.
         TFile rootFile(t_rootFileName.c_str(), "READ");
         // DAQ histo vector iterator.
+        //daqHisto is a point to the first element of m_daqHistos, will iterate through the vector addresses
         auto daqHisto = m_daqHistos.begin();
+        for (int i = 0; i < m_eventIds.size(); i++) {
+		std::cout << "Event " << m_eventIds.at(i) << std::endl;
+	}
         // Loop over event IDs.
         for (const auto &eventId : m_eventIds) {
             // Get the histogram pointers from the ROOT file using the GetObject method which performs basic sanity checks.
@@ -137,11 +141,12 @@ namespace pixy_roimux {
         m_readoutHistos.resize(m_daqHistos.size());
 
         // DAQ histo vector const iterator.
+        // daqHisto is a point to the first element of m_daqHistos, will iterate through the vector addresses
         auto daqHisto = m_daqHistos.cbegin();
         // Readout histo vector iterator.
         auto readoutHisto = m_readoutHistos.begin();
         // Loop over events.
-        for (const auto &eventId : m_eventIds) {
+        for (const auto &eventId : m_eventIds) { //const reference to not copy and to make it immutable, eventId iterator taking on various values in vector
             std::cout << "Converting event number " << eventId << "...\n";
             const std::string pixelHistoName = "pixelHisto_" + std::to_string(eventId);
             const std::string roiHistoName = "roiHisto_" + std::to_string(eventId);
