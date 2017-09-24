@@ -369,23 +369,12 @@ namespace pixy_roimux {
             ++eventData;
             ++event;
         }
-
-	int maxAmbiguity = ambiguities.at(0);
-	for(int i = 0; i < ambiguities.size(); i++) {
-		if (ambiguities.at(i) > maxAmbiguity) {
-			maxAmbiguity = ambiguities.at(i);
-		}
-	}
+	
+	// Create histograms for ambiguities and unmatched pixels
+	// Write to root file 
 	TH1S Ambiguities("Ambiguities", "Ambiguities", ambiguities.size(), 0, ambiguities.size());
 	for(int i = 0; i < ambiguities.size(); i++) {
 		Ambiguities.SetBinContent(i + 1, ambiguities.at(i));
-	}
-
-	int maxUnmatched = unmatched.at(0);
-	for(int i = 0; i < unmatched.size(); i++) {
-		if (unmatched.at(i) > maxUnmatched) {
-			maxUnmatched = unmatched.at(i);
-		}
 	}
 	TH1S Unmatched("Unmatched", "Unmatched", unmatched.size(), 0, maxUnmatched);
 	for(int i = 0; i < unmatched.size(); i++) {
