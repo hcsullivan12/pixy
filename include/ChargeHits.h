@@ -124,6 +124,37 @@ namespace pixy_roimux {
         /// viperMap used to convert pixel and ROI channels to actual geometrical coordinates.
         ///
         const RunParams &m_runParams;
+
+	///
+        /// Vector to help draw ambiguity histogram
+        ///
+	std::vector<unsigned> ambiguities;
+
+	///
+        /// Vector to help draw unmatched histogram
+        ///
+	std::vector<unsigned> unmatched;
+
+	///
+        /// Vector to help draw time acceptance histogram
+        ///
+	std::vector<unsigned> timeAcceptance;	
+
+	///
+        /// Vector to help draw posPulseHeight for pixel histogram
+        ///
+	std::vector<unsigned> posPulsePixelMax;
+
+	///
+        /// Vector to help draw posPulseHeight for ROI histogram
+        ///
+	std::vector<unsigned> posPulseROIMax;
+
+	///
+        /// Vector to help draw thrPosPeak for Pixel histogram
+        ///
+	std::vector<double> thrPosPeakVec;
+
     };
 }
 

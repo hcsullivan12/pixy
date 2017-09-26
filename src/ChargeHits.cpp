@@ -52,6 +52,10 @@ namespace pixy_roimux {
             //std::cout << "thrNegTrail " << thrNegTrail << std::endl;
             unsigned posPeakSample = static_cast<unsigned>(channelHisto->GetMaximumBin()) - 1;
             int posPeakValue = static_cast<int>(channelHisto->GetBinContent(posPeakSample + 1));
+	    if(posPeakValue < thrPosPeak){
+		std::cout << "Didn't meet threshold!!!!\n";
+	    }
+	    // Find all hits in this channel
             while (posPeakValue >= thrPosPeak) {
                 // Start and end of the pulse.
                 int firstSample;
@@ -130,12 +134,15 @@ namespace pixy_roimux {
                         hit.negPulseHeight = negPeakValue;
                         hit.posPulseWidth = hit.zeroCrossSample - hit.firstSample;
                         hit.negPulseWidth = hit.lastSample - hit.zeroCrossSample + 1;
+			posPulseROIMax.push_back(posPeakValue);
                     } else {
                         hit.zeroCrossSample = 0;
                         hit.negPeakSample = 0;
                         hit.negPulseHeight = 0;
                         hit.posPulseWidth = hit.lastSample - hit.firstSample + 1;
                         hit.negPulseWidth = 0;
+			posPulsePixelMax.push_back(posPeakValue);
+			thrPosPeakVec.push_back(thrPosPeak);
                        // std::cout << " posPulseWidth " << hit.posPulseWidth << std::endl;
                     }
                     hit.pulseIntegral = 0;
@@ -201,6 +208,7 @@ namespace pixy_roimux {
                 // Because we're currently inside the ROI pulse, we're sure this is an actual match.
                 t_event.pixel2roi.at(pixelHitId).push_back(roiHitId);
                 t_event.roi2pixel.at(roiHitId).push_back(pixelHitId);
+		timeAcceptance.push_back(t_event.pixelHits.at(pixelHitId).posPeakSample - t_event.roiHits.at(roiHitId).posPeakSample);
             }
             // Now loop from the end of the ROI pulse until twice the peak finding range m_discRange after the end of the
             // pulse. This is the maximum length a pixel pulse can have. Thus, outside this range, a match to this ROI hit
@@ -218,6 +226,7 @@ namespace pixy_roimux {
                     // If they actually overlap, append the match to the match vectors.
                     t_event.pixel2roi.at(pixelHitId).push_back(roiHitId);
                     t_event.roi2pixel.at(roiHitId).push_back(pixelHitId);
+		    timeAcceptance.push_back(t_event.pixelHits.at(pixelHitId).posPeakSample - t_event.roiHits.at(roiHitId).posPeakSample);
                 }
             }
         }
@@ -284,10 +293,6 @@ namespace pixy_roimux {
         auto eventData = m_chargeData.getReadoutHistos().cbegin();
         // Events vector iterator. We'll store the events we built from the raw data in there.
         auto event = m_events.begin();
-	//Vector for ambiguities
-	std::vector<unsigned> ambiguities;
-	//Vector for unmatched
-	std::vector<unsigned> unmatched;
         // Loop over all events using the event IDs vector.
         for (const auto &eventId : m_chargeData.getEventIds()) {
             std::cout << "Processing event number " << eventId << ":\n";
@@ -373,16 +378,43 @@ namespace pixy_roimux {
 	// Create histograms for ambiguities and unmatched pixels
 	// Write to root file 
 	TH1S Ambiguities("Ambiguities", "Ambiguities", ambiguities.size(), 0, ambiguities.size());
+	Ambiguities.GetXaxis()->SetTitle("Event #");
 	for(int i = 0; i < ambiguities.size(); i++) {
 		Ambiguities.SetBinContent(i + 1, ambiguities.at(i));
 	}
-	TH1S Unmatched("Unmatched", "Unmatched", unmatched.size(), 0, maxUnmatched);
+	TH1S Unmatched("Unmatched", "Unmatched", unmatched.size(), 0, unmatched.size());
+	Unmatched.GetXaxis()->SetTitle("Event #");
 	for(int i = 0; i < unmatched.size(); i++) {
 		Unmatched.SetBinContent(i + 1, unmatched.at(i));
 	}
+	TH1S TimeAcceptance("TimeAcceptance", "Time Difference in Peaks", 100, 0, 400);
+	TimeAcceptance.GetXaxis()->SetTitle("Samples (1 sample = 210 ns)");
+	for(int i = 0; i < timeAcceptance.size(); i++) {
+		TimeAcceptance.Fill(timeAcceptance.at(i));
+	}
+	TH1S ROIMaxPulses("ROIMaxPulses", "ROI (Positive) Pulse Peaks", 100, 0, 800);
+	ROIMaxPulses.GetXaxis()->SetTitle("ADC Value");
+	for(int i = 0; i < posPulseROIMax.size(); i++) {
+		ROIMaxPulses.Fill(posPulseROIMax.at(i));
+	}
+	TH1S PixelMaxPulses("PixelMaxPulses", "Pixel Pulse Peaks", 100, 0, 1500);
+	PixelMaxPulses.GetXaxis()->SetTitle("ADC Value");
+	for(int i = 0; i < posPulsePixelMax.size(); i++) {
+		PixelMaxPulses.Fill(posPulsePixelMax.at(i));
+	}
+	TH1S ThresholdPosPixelPeaks("ThresholdPosPixelPeaks", "Threshold for Positive Pixel Peaks", 100, 0, 1500);
+	ThresholdPosPixelPeaks.GetXaxis()->SetTitle("ADC Value");
+	for(int i = 0; i < thrPosPeakVec.size(); i++) {
+		ThresholdPosPixelPeaks.Fill(thrPosPeakVec.at(i));
+	}
+
 	TFile Results("../data/Results.root", "RECREATE");
 	Ambiguities.Write();
 	Unmatched.Write();
+	TimeAcceptance.Write();
+	ROIMaxPulses.Write();
+	PixelMaxPulses.Write();
+	ThresholdPosPixelPeaks.Write();
 	Results.Close();
 	
     }
