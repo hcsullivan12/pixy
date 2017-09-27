@@ -135,6 +135,7 @@ namespace pixy_roimux {
                         hit.posPulseWidth = hit.zeroCrossSample - hit.firstSample;
                         hit.negPulseWidth = hit.lastSample - hit.zeroCrossSample + 1;
 			posPulseROIMax.push_back(posPeakValue);
+			roiWidthsVec.push_back(hit.posPulseWidth + hit.negPulseWidth);
                     } else {
                         hit.zeroCrossSample = 0;
                         hit.negPeakSample = 0;
@@ -143,6 +144,7 @@ namespace pixy_roimux {
                         hit.negPulseWidth = 0;
 			posPulsePixelMax.push_back(posPeakValue);
 			thrPosPeakVec.push_back(thrPosPeak);
+			pixelWidthsVec.push_back(hit.posPulseWidth);
                        // std::cout << " posPulseWidth " << hit.posPulseWidth << std::endl;
                     }
                     hit.pulseIntegral = 0;
@@ -208,7 +210,10 @@ namespace pixy_roimux {
                 // Because we're currently inside the ROI pulse, we're sure this is an actual match.
                 t_event.pixel2roi.at(pixelHitId).push_back(roiHitId);
                 t_event.roi2pixel.at(roiHitId).push_back(pixelHitId);
-		timeAcceptance.push_back(t_event.pixelHits.at(pixelHitId).posPeakSample - t_event.roiHits.at(roiHitId).posPeakSample);
+		double transparency = (100.0*t_event.pixelHits.at(pixelHitId).pulseIntegral)/(t_event.pixelHits.at(pixelHitId).pulseIntegral + 				t_event.roiHits.at(roiHitId).pulseIntegral);
+		transparencyVec.push_back(transparency);
+		timePeakAcceptance.push_back(t_event.pixelHits.at(pixelHitId).posPeakSample - t_event.roiHits.at(roiHitId).posPeakSample);
+		timeFirstSampleAcceptance.push_back(t_event.pixelHits.at(pixelHitId).firstSample - t_event.roiHits.at(roiHitId).firstSample);
             }
             // Now loop from the end of the ROI pulse until twice the peak finding range m_discRange after the end of the
             // pulse. This is the maximum length a pixel pulse can have. Thus, outside this range, a match to this ROI hit
@@ -226,7 +231,8 @@ namespace pixy_roimux {
                     // If they actually overlap, append the match to the match vectors.
                     t_event.pixel2roi.at(pixelHitId).push_back(roiHitId);
                     t_event.roi2pixel.at(roiHitId).push_back(pixelHitId);
-		    timeAcceptance.push_back(t_event.pixelHits.at(pixelHitId).posPeakSample - t_event.roiHits.at(roiHitId).posPeakSample);
+		    timePeakAcceptance.push_back(t_event.pixelHits.at(pixelHitId).posPeakSample - t_event.roiHits.at(roiHitId).posPeakSample);
+		    timeFirstSampleAcceptance.push_back(t_event.pixelHits.at(pixelHitId).firstSample - t_event.roiHits.at(roiHitId).firstSample);
                 }
             }
         }
@@ -387,10 +393,15 @@ namespace pixy_roimux {
 	for(int i = 0; i < unmatched.size(); i++) {
 		Unmatched.SetBinContent(i + 1, unmatched.at(i));
 	}
-	TH1S TimeAcceptance("TimeAcceptance", "Time Difference in Peaks", 100, 0, 400);
-	TimeAcceptance.GetXaxis()->SetTitle("Samples (1 sample = 210 ns)");
-	for(int i = 0; i < timeAcceptance.size(); i++) {
-		TimeAcceptance.Fill(timeAcceptance.at(i));
+	TH1S TimePeakAcceptance("TimePeakAcceptance", "Time Difference in Peaks", 100, -400, 400);
+	TimePeakAcceptance.GetXaxis()->SetTitle("Samples (1 sample = 210 ns)");
+	for(int i = 0; i < timePeakAcceptance.size(); i++) {
+		TimePeakAcceptance.Fill(timePeakAcceptance.at(i));
+	}
+	TH1S TimeFirstSampleAcceptance("TimeFirstSampleAcceptance", "Time Difference in Rising Edge", 100, -400, 400);
+	TimeFirstSampleAcceptance.GetXaxis()->SetTitle("Samples (1 sample = 210 ns)");
+	for(int i = 0; i < timeFirstSampleAcceptance.size(); i++) {
+		TimeFirstSampleAcceptance.Fill(timeFirstSampleAcceptance.at(i));
 	}
 	TH1S ROIMaxPulses("ROIMaxPulses", "ROI (Positive) Pulse Peaks", 100, 0, 800);
 	ROIMaxPulses.GetXaxis()->SetTitle("ADC Value");
@@ -407,14 +418,33 @@ namespace pixy_roimux {
 	for(int i = 0; i < thrPosPeakVec.size(); i++) {
 		ThresholdPosPixelPeaks.Fill(thrPosPeakVec.at(i));
 	}
+	TH1S Transparency("Transparency", "Transparency of Induction Grid", 100, 0, 140);
+	Transparency.GetXaxis()->SetTitle("Transparency (%)");
+	for(int i = 0; i < transparencyVec.size(); i++) {
+		Transparency.Fill(transparencyVec.at(i));
+	}
+	TH1S PixelPulseWidths("PixelPulseWidths", "Pixel Pulse Widths", 100, 0, 300);
+	PixelPulseWidths.GetXaxis()->SetTitle("Samples (1 sample = 210 ns)");
+	for(int i = 0; i < pixelWidthsVec.size(); i++) {
+		PixelPulseWidths.Fill(pixelWidthsVec.at(i));
+	}
+	TH1S ROIPulseWidths("ROIPulseWidths", "ROI Pulse Widths", 100, 0, 400);
+	ROIPulseWidths.GetXaxis()->SetTitle("Samples (1 sample = 210 ns)");
+	for(int i = 0; i < roiWidthsVec.size(); i++) {
+		ROIPulseWidths.Fill(roiWidthsVec.at(i));
+	}
 
 	TFile Results("../data/Results.root", "RECREATE");
 	Ambiguities.Write();
 	Unmatched.Write();
-	TimeAcceptance.Write();
+	TimePeakAcceptance.Write();
+	TimeFirstSampleAcceptance.Write();
 	ROIMaxPulses.Write();
 	PixelMaxPulses.Write();
 	ThresholdPosPixelPeaks.Write();
+	Transparency.Write();
+	PixelPulseWidths.Write();
+	ROIPulseWidths.Write();	
 	Results.Close();
 	
     }

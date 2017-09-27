@@ -136,9 +136,14 @@ namespace pixy_roimux {
 	std::vector<unsigned> unmatched;
 
 	///
-        /// Vector to help draw time acceptance histogram
+        /// Vector to help draw difference in peak sample histogram
         ///
-	std::vector<unsigned> timeAcceptance;	
+	std::vector<int> timePeakAcceptance;
+
+	///
+        /// Vector to help draw difference in firstsample histogram
+        ///
+	std::vector<int> timeFirstSampleAcceptance;	
 
 	///
         /// Vector to help draw posPulseHeight for pixel histogram
@@ -154,6 +159,22 @@ namespace pixy_roimux {
         /// Vector to help draw thrPosPeak for Pixel histogram
         ///
 	std::vector<double> thrPosPeakVec;
+
+	///
+        /// Vector to help draw transparency histogram
+        ///
+	std::vector<double> transparencyVec;
+
+	///
+        /// Vector to help draw pixel widths histogram
+        ///
+	std::vector<double> pixelWidthsVec;
+
+	///
+        /// Vector to help draw roi widths histogram
+        ///
+	std::vector<double> roiWidthsVec;
+
 
     };
 }
